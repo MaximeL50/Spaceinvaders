@@ -103,7 +103,7 @@ class Bullet(pygame.sprite.Sprite):
             self.kill()
 
 
-class App(object):
+class App():
 
     def __init__(self):
         pygame.init()
@@ -116,6 +116,8 @@ class App(object):
         self.allSprites = pygame.sprite.Group(self.player, self.aliens)
         self.gameOver = -1
         self.updateDb = 0
+        self.start = pygame.time.get_ticks()
+        self.end = 0
 
     def makeAliens(self):
         aliens = pygame.sprite.Group()
@@ -163,9 +165,8 @@ class App(object):
                         self.gameOver = -1
                         self.resetGame()
                     elif self.gameOver == 1:
-                        self.gameOver = -1
-                        self.updateDb = 0
                         self.resetGame()
+                        self.gameOver = -1
                 elif event.key == pygame.K_ESCAPE:
                     pygame.quit()
                     sys.exit()
@@ -190,6 +191,7 @@ class App(object):
         self.allSprites = pygame.sprite.Group(self.player, self.aliens)
         self.keys = pygame.key.get_pressed()
         self.clock = pygame.time.Clock()
+        self.start = pygame.time.get_ticks()
 
 
     def mainLoop(self):
@@ -207,6 +209,7 @@ class App(object):
                 self.clock.tick(60)
             elif self.gameOver == 0:
                 currentTime = pygame.time.get_ticks()
+                self.updateDb = 0
                 self.makeScreen()
                 self.checkEvents()
                 self.allSprites.update(self.keys, currentTime)
@@ -217,18 +220,12 @@ class App(object):
                 self.checkGameOver()
                 self.clock.tick(60)
             elif self.gameOver == 1:
-
                 self.checkEvents()
                 self.winScreen()
                 self.checkEvents()
-                if(self.updateDb == 0):
+                if self.updateDb == 0:
                     self.updateDb += 1
-                    cursor.execute("""INSERT INTO result(username, score) VALUES(?, ?)""", (self.player.name, currentTime))
-                    cursor.execute("""SELECT * FROM result""")
-                    users = cursor.fetchall()
-                    conn.commit()
-                    print(users)
-
+                    self.save(conn)
                 pygame.display.flip()
                 pygame.display.update()
                 self.clock.tick(60)
@@ -243,7 +240,6 @@ class App(object):
 
     def winScreen(self):
         displaySurf = pygame.display.set_mode((DISPLAYWIDTH, DISPLAYHEIGHT))
-        displayRect = displaySurf.get_rect()
         win = pygame.image.load("win.jpg").convert()
         win = pygame.transform.scale(win, (DISPLAYWIDTH, DISPLAYHEIGHT))
         displaySurf.blit(win, (0, 0))
@@ -251,7 +247,6 @@ class App(object):
 
     def loseScreen(self):
         displaySurf = pygame.display.set_mode((DISPLAYWIDTH, DISPLAYHEIGHT))
-        displayRect = displaySurf.get_rect()
         lose = pygame.image.load("gameover.jpg").convert()
         lose = pygame.transform.scale(lose, (DISPLAYWIDTH, DISPLAYHEIGHT))
         displaySurf.blit(lose, (0, 0))
@@ -259,12 +254,20 @@ class App(object):
 
     def home(self):
         displaySurf = pygame.display.set_mode((DISPLAYWIDTH, DISPLAYHEIGHT))
-        displayRect = displaySurf.get_rect()
         home = pygame.image.load("home.jpg").convert()
         home = pygame.transform.scale(home, (DISPLAYWIDTH, DISPLAYHEIGHT))
         displaySurf.blit(home, (0, 0))
         displaySurf.convert()
 
+    def save(self, conn):
+        self.end = pygame.time.get_ticks()
+        print(self.start, self.end)
+        cursor = conn.cursor()
+        cursor.execute("""INSERT INTO result(username, score) VALUES(?, ?)""", (self.player.name, self.end - self.start))
+        cursor.execute("""SELECT * FROM result""")
+        users = cursor.fetchall()
+        conn.commit()
+        print(users)
 
 
 if __name__ == '__main__':
